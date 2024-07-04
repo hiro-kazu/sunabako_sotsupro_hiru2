@@ -139,10 +139,12 @@ def get_budget(user_id):
     row = c.fetchone()
     conn.close()
     if row:
-        return row[0]
+        initial_budget = row[0]
+        total_expenses = get_total_expenses(user_id)
+        current_budget = initial_budget - total_expenses
+        return initial_budget, current_budget
     else:
-        return None  # エラー処理やデフォルト値を返す場合は適宜変更してください
-
+        return None, None  # エラー処理やデフォルト値を返す場合は適宜変更してください
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -197,13 +199,18 @@ def handle_message(event):
 
     elif message_text.lower() == "予算確認":
         try:
-            current_budget = get_budget(user_id)
-            if current_budget is not None:
-                response_message = f"現在の予算は{current_budget}円です。"
+            initial_budget, current_budget = get_budget(user_id)
+            if initial_budget is not None and current_budget is not None:
+                total_expenses = initial_budget - current_budget
+                response_message = f"現在の予算: {initial_budget}円\n"
+                response_message += f"総支出: {total_expenses}円\n"
+                response_message += f"残りの予算: {current_budget}円"
             else:
                 response_message = "現在、予算が設定されていません。"
         except Exception as e:
             response_message = "予算の確認中にエラーが発生しました。"
+            print(f"Error checking budget: {str(e)}")
+            traceback.print_exc()
 
     else:
         response_message = "予算を登録するには「予算登録 金額」と、支出を登録するには「支出登録 金額」と入力してください。"
